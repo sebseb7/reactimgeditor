@@ -442,8 +442,6 @@ export default class ImageEditor extends Component {
     const { width, height } = canvas;
 
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = '#111';
-    ctx.fillRect(0, 0, width, height);
 
     if (!this.image) return;
 
@@ -549,11 +547,6 @@ export default class ImageEditor extends Component {
 
     return (
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-        <div style={{ position: 'absolute', left: 0, top: 0, right: 0, height: y, background: 'rgba(0,0,0,0.55)' }} />
-        <div style={{ position: 'absolute', left: 0, top: y + h, right: 0, bottom: 0, background: 'rgba(0,0,0,0.55)' }} />
-        <div style={{ position: 'absolute', left: 0, top: y, width: x, height: h, background: 'rgba(0,0,0,0.55)' }} />
-        <div style={{ position: 'absolute', left: x + w, top: y, right: 0, height: h, background: 'rgba(0,0,0,0.55)' }} />
-
         <div
           style={{
             position: 'absolute',
@@ -612,7 +605,7 @@ export default class ImageEditor extends Component {
           border: `2px dashed ${dragOver ? '#4cc9f0' : '#444'}`,
           borderRadius: 8,
           overflow: 'hidden',
-          background: '#0d0d1a',
+          background: 'transparent',
           transition: 'border-color 0.2s',
         }}
         onDrop={this.handleDrop}
@@ -621,7 +614,7 @@ export default class ImageEditor extends Component {
       >
         <canvas
           ref={this.canvasRef}
-          style={{ display: 'block', width: '100%', height: '100%' }}
+          style={{ display: 'block', width: '100%', height: '100%', background: 'transparent' }}
         />
 
         {cropMode && this.renderCropOverlay()}

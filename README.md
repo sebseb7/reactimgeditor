@@ -192,13 +192,3 @@ demo/
 dist/
   reactimgeditor.js    ← built output (created by npm run build)
 ```
-
-## Publishing
-
-Update `repository.url` in `package.json` with your GitHub username, push to GitHub, then install in other projects:
-
-```bash
-npm install github:sebseb7/reactimgeditor
-```
-
-The `prepare` script builds the library automatically when the package is installed from git.

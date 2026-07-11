@@ -34,7 +34,7 @@
     "rotate",
     "drag-and-drop"
   ],
-  "license": "MIT",
+  "license": "0bsd",
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18"
