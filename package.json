@@ -1,0 +1,51 @@
+{
+  "name": "reactimgeditor",
+  "version": "1.0.0",
+  "description": "React class component image editor with drop, rotate, and crop",
+  "type": "module",
+  "main": "./dist/reactimgeditor.js",
+  "module": "./dist/reactimgeditor.js",
+  "exports": {
+    ".": {
+      "import": "./dist/reactimgeditor.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run build:lib",
+    "build:lib": "vite build --config vite.lib.config.js",
+    "build:demo": "vite build",
+    "preview": "vite preview",
+    "prepare": "npm run build:lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sebseb7/reactimgeditor.git"
+  },
+  "keywords": [
+    "react",
+    "image-editor",
+    "crop",
+    "rotate",
+    "drag-and-drop"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "dependencies": {
+    "@atlaskit/pragmatic-drag-and-drop": "^2.0.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.3",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "vite": "^8.1.4"
+  }
+}
