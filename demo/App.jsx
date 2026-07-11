@@ -98,7 +98,6 @@ export default class App extends Component {
           ref={(img) => {
             this.imgObj = img;
           }}
-          height="420px"
         />
 
         <div className="test-controls">

@@ -38,6 +38,7 @@ const HANDLE_CURSORS = {
  */
 export default class ImageEditor extends Component {
   canvasRef = createRef();
+  containerRef = createRef();
   handleElements = {};
   handleCleanups = [];
   dragSession = null;
@@ -46,10 +47,10 @@ export default class ImageEditor extends Component {
   rotation = 0;
 
   state = {
-    dragOver: false,
     hasImage: false,
     cropMode: false,
     cropRect: null,
+    layoutSize: null,
   };
 
   setHandleRef = (handle) => (el) => {
@@ -61,15 +62,13 @@ export default class ImageEditor extends Component {
 
   rotate = (degrees) => {
     this.rotation = (this.rotation + degrees) % 360;
-    this.draw();
-    if (this.state.cropMode) this.resetCropToImageBounds();
+    this.resizeCanvas();
     return this.rotation;
   };
 
   setRotation = (degrees) => {
     this.rotation = degrees % 360;
-    this.draw();
-    if (this.state.cropMode) this.resetCropToImageBounds();
+    this.resizeCanvas();
     return this.rotation;
   };
 
@@ -179,7 +178,7 @@ export default class ImageEditor extends Component {
     this.unbindCropHandles();
     this.image = null;
     this.rotation = 0;
-    this.setState({ hasImage: false, cropMode: false, cropRect: null }, this.draw);
+    this.setState({ hasImage: false, cropMode: false, cropRect: null, layoutSize: null });
   };
 
   getDataURL = (type = 'image/png', quality) => {
@@ -208,6 +207,82 @@ export default class ImageEditor extends Component {
   };
 
   /* ── layout / crop math ─────────────────────────── */
+
+  getRotatedBounds = (imgW, imgH, rad) => {
+    const sin = Math.abs(Math.sin(rad));
+    const cos = Math.abs(Math.cos(rad));
+    return {
+      width: imgW * cos + imgH * sin,
+      height: imgW * sin + imgH * cos,
+    };
+  };
+
+  resolveCssDimension = (value, parentSize) => {
+    if (value == null || value === '') return null;
+    if (typeof value === 'number') return value;
+    const str = String(value);
+    if (str.endsWith('%') && parentSize) {
+      return Math.round((parentSize * parseFloat(str)) / 100);
+    }
+    const n = parseFloat(str);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  resolveCanvasSize = () => {
+    const { width: propW, height: propH } = this.props;
+    const parentWidth = this.containerRef.current?.parentElement?.clientWidth ?? null;
+
+    if (!this.image) {
+      const w = this.resolveCssDimension(propW, parentWidth) ?? 0;
+      const h = this.resolveCssDimension(propH, parentWidth) ?? 0;
+      return { width: w, height: h };
+    }
+
+    const rad = (this.rotation * Math.PI) / 180;
+    const { width: rotW, height: rotH } = this.getRotatedBounds(
+      this.image.naturalWidth,
+      this.image.naturalHeight,
+      rad,
+    );
+
+    const w = this.resolveCssDimension(propW, parentWidth);
+    const h = this.resolveCssDimension(propH, parentWidth);
+
+    if (w != null && h != null) {
+      const scale = Math.min(w / rotW, h / rotH);
+      return {
+        width: Math.max(1, Math.round(rotW * scale)),
+        height: Math.max(1, Math.round(rotH * scale)),
+      };
+    }
+    if (w != null) {
+      const scale = w / rotW;
+      return {
+        width: Math.max(1, Math.round(w)),
+        height: Math.max(1, Math.round(rotH * scale)),
+      };
+    }
+    if (h != null) {
+      const scale = h / rotH;
+      return {
+        width: Math.max(1, Math.round(rotW * scale)),
+        height: Math.max(1, Math.round(h)),
+      };
+    }
+
+    let width = rotW;
+    let height = rotH;
+    if (parentWidth && width > parentWidth) {
+      const scale = parentWidth / width;
+      width = parentWidth;
+      height = rotH * scale;
+    }
+
+    return {
+      width: Math.max(1, Math.round(width)),
+      height: Math.max(1, Math.round(height)),
+    };
+  };
 
   getImageLayout = () => {
     if (!this.image) return null;
@@ -426,7 +501,7 @@ export default class ImageEditor extends Component {
         this.image = img;
         this.rotation = 0;
         this.setState({ hasImage: true, cropMode: false, cropRect: null }, () => {
-          this.draw();
+          this.resizeCanvas();
           resolve(img);
         });
       };
@@ -471,7 +546,6 @@ export default class ImageEditor extends Component {
     if (!this.isFileDrag(e)) return;
     e.preventDefault();
     e.stopPropagation();
-    this.setState({ dragOver: false });
 
     const file = e.dataTransfer?.files?.[0];
     if (file) this.loadFile(file).catch(console.error);
@@ -481,14 +555,12 @@ export default class ImageEditor extends Component {
     if (!this.isFileDrag(e)) return;
     e.preventDefault();
     e.stopPropagation();
-    this.setState({ dragOver: true });
   };
 
   handleDragLeave = (e) => {
     if (!this.isFileDrag(e)) return;
     e.preventDefault();
     e.stopPropagation();
-    this.setState({ dragOver: false });
   };
 
   handleFileInput = (e) => {
@@ -515,6 +587,13 @@ export default class ImageEditor extends Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
+    if (
+      prevProps.width !== this.props.width
+      || prevProps.height !== this.props.height
+      || prevState.hasImage !== this.state.hasImage
+    ) {
+      this.resizeCanvas();
+    }
     if (this.state.cropMode && (!prevState.cropMode || prevState.hasImage !== this.state.hasImage)) {
       requestAnimationFrame(() => this.syncCropHandles());
     }
@@ -532,11 +611,22 @@ export default class ImageEditor extends Component {
     const canvas = this.canvasRef.current;
     if (!canvas) return;
 
-    const rect = canvas.parentElement.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-    this.draw();
-    if (this.state.cropMode) this.resetCropToImageBounds();
+    const size = this.resolveCanvasSize();
+    const changed = this.state.layoutSize?.width !== size.width
+      || this.state.layoutSize?.height !== size.height;
+
+    const apply = () => {
+      canvas.width = size.width;
+      canvas.height = size.height;
+      this.draw();
+      if (this.state.cropMode) this.resetCropToImageBounds();
+    };
+
+    if (changed) {
+      this.setState({ layoutSize: size }, apply);
+    } else {
+      apply();
+    }
   };
 
   renderCropOverlay() {
@@ -593,43 +683,50 @@ export default class ImageEditor extends Component {
   }
 
   render() {
-    const { height = '400px', className = '' } = this.props;
-    const { dragOver, hasImage, cropMode } = this.state;
+    const { width, height, className = '', style } = this.props;
+    const { hasImage, cropMode, layoutSize } = this.state;
+
+    const containerStyle = {
+      position: 'relative',
+      display: 'inline-block',
+      maxWidth: '100%',
+      verticalAlign: 'top',
+      background: 'transparent',
+      ...style,
+    };
+
+    if (width != null) containerStyle.width = width;
+    if (height != null) containerStyle.height = height;
+    if (layoutSize && width == null) containerStyle.width = layoutSize.width;
+    if (layoutSize && height == null) containerStyle.height = layoutSize.height;
 
     return (
       <div
+        ref={this.containerRef}
         className={`image-editor ${className}`}
-        style={{
-          position: 'relative',
-          height,
-          border: `2px dashed ${dragOver ? '#4cc9f0' : '#444'}`,
-          borderRadius: 8,
-          overflow: 'hidden',
-          background: 'transparent',
-          transition: 'border-color 0.2s',
-        }}
+        style={containerStyle}
         onDrop={this.handleDrop}
         onDragOver={this.handleDragOver}
         onDragLeave={this.handleDragLeave}
       >
-        <canvas
-          ref={this.canvasRef}
-          style={{ display: 'block', width: '100%', height: '100%', background: 'transparent' }}
-        />
+        {hasImage && (
+          <canvas
+            ref={this.canvasRef}
+            style={{ display: 'block', background: 'transparent' }}
+          />
+        )}
 
         {cropMode && this.renderCropOverlay()}
 
         {!hasImage && (
           <div
             style={{
-              position: 'absolute',
-              inset: 0,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '0.75rem',
-              pointerEvents: 'none',
+              padding: '1.5rem',
               color: '#666',
             }}
           >

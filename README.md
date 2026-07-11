@@ -5,7 +5,7 @@ A React **class component** for basic image editing: file drop, rotation, and cr
 Built for projects that use callback refs and an imperative API:
 
 ```jsx
-<ImageEditor ref={(img) => { this.imgObj = img; }} height="420px" />
+<ImageEditor ref={(img) => { this.imgObj = img; }} />
 ```
 
 ## Install from GitHub
@@ -48,10 +48,9 @@ export default class MyPage extends Component {
 
   render() {
     return (
-      <div>
+      <div style={{ width: 500 }}>
         <ImageEditor
           ref={(img) => { this.imgObj = img; }}
-          height="400px"
         />
         <button type="button" onClick={this.handleSave}>Save</button>
       </div>
@@ -70,15 +69,14 @@ export default function MyPage() {
   const imgRef = useRef(null);
 
   return (
-    <>
+    <div style={{ width: 500 }}>
       <ImageEditor
         ref={(instance) => { imgRef.current = instance; }}
-        height="400px"
       />
       <button type="button" onClick={() => imgRef.current?.rotateRight()}>
         Rotate
       </button>
-    </>
+    </div>
   );
 }
 ```
@@ -87,10 +85,14 @@ export default function MyPage() {
 
 ## Props
 
-| Prop        | Type     | Default    | Description                          |
-|-------------|----------|------------|--------------------------------------|
-| `height`    | `string` | `"400px"`  | CSS height of the editor container   |
-| `className` | `string` | `""`       | Extra class on the root element      |
+| Prop        | Type               | Default | Description |
+|-------------|--------------------|---------|-------------|
+| `width`     | `string \| number` | —       | Container width (e.g. `"100%"`, `400`). When omitted with an image loaded, sizes to the image (capped by parent width). |
+| `height`    | `string \| number` | —       | Container height. When omitted with an image loaded, derived from image aspect ratio. |
+| `className` | `string`           | `""`    | Extra class on the root element |
+| `style`     | `object`           | —       | Inline styles merged onto the root element |
+
+The editor has no border or background — it is transparent and sizes to the image, or to `width` / `height` when you pass them.
 
 ## Imperative API (via ref)
 
