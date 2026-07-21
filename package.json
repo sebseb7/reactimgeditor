@@ -1,6 +1,6 @@
 {
   "name": "reactimgeditor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "React class component image editor with drop, rotate, and crop",
   "type": "module",
   "main": "./dist/reactimgeditor.js",
@@ -18,7 +18,7 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run build:lib",
-    "build:lib": "vite build --config vite.lib.config.js",
+    "build:lib": "NODE_ENV=production vite build --config vite.lib.config.js --mode production",
     "build:demo": "vite build",
     "preview": "vite preview",
     "prepare": "npm run build:lib"
